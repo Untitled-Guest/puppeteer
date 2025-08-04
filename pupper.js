@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 
 // Paste the WebSocket URL you copied from the JSON page here
-const browserWSEndpoint = 'ws://localhost:9222/devtools/browser/2ba1c63e-0042-46fa-bf8e-4ee7a1c0d385';
+const browserWSEndpoint = 'ws://localhost:9222/devtools/browser/e00282c9-0552-4862-8f9f-06e680ef5150';
 
 (async () => {
     // Connect to the running browser instance

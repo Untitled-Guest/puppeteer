@@ -1,63 +1,37 @@
-// scrape.js
-const puppeteer = require('puppeteer-extra')
-const StealthPlugin = require('puppeteer-extra-plugin-stealth')
-puppeteer.use(StealthPlugin())
+const puppeteer = require('puppeteer');
 
-;(async () => {
-  const browser = await puppeteer.launch({
-    headless: false,               // run in a visible window
-    defaultViewport: null,         // use full available size
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--window-size=1280,800'
-    ]
-  })
+// Paste the WebSocket URL you copied from the JSON page here
+const browserWSEndpoint = 'ws://localhost:9222/devtools/browser/2ba1c63e-0042-46fa-bf8e-4ee7a1c0d385';
 
-  const page = await browser.newPage()
+(async () => {
+    // Connect to the running browser instance
+    const browser = await puppeteer.connect({
+        browserWSEndpoint: browserWSEndpoint,
+    });
 
-  // 1) Spoof UA + languages + timezone
-  await page.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-    'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-    'Chrome/115.0.0.0 Safari/537.36'
-  )
-  await page.setExtraHTTPHeaders({
-    'Accept-Language': 'en-US,en;q=0.9',
-  })
-  await page.emulateTimezone('America/New_York')  // or your preferred TZ
+    // You can now get a list of existing pages (tabs)
+    const pages = await browser.pages();
+    
+    // Or you can create a new page
+    const page = await browser.newPage();
+    
+    // Navigate and scrape just like before
+    await page.goto('https://drednot.io/leaderboard/?cat=boss_lazer&by=ship');
 
-  // 2) Navigate and wait for Cloudflare’s challenge + redirect
-  await page.goto(
-    'https://drednot.io/leaderboard/?cat=boss_lazer&by=pilot',
-    {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    }
-  )
+    // You can also interact with an existing page by getting it from the pages array
+    // if (pages.length > 0) {
+    //     const existingPage = pages[0]; // Assuming you want the first tab
+    //     console.log(`Title of the existing page: ${await existingPage.title()}`);
+    // }
 
-  // 3) Wait until Cloudflare check is gone and the table is visible
-  await page.waitForFunction(
-    () => !document.title.toLowerCase().includes('just a moment'),
-    { timeout: 60000 }
-  )
-  // 4) Wait for the actual leaderboard rows to appear
-  await page.waitForSelector('table.leaderboard tbody tr', { timeout: 60000 })
+    // await page.waitForTimeout(5000);
+    const content = await page.content();
+    console.log(content);
 
-  // 5) Scrape the rows
-  const rows = await page.$$eval(
-    'table.leaderboard tbody tr',
-    trs => trs.map(tr => {
-      const [rank, pilot, score] = Array.from(tr.querySelectorAll('td'))
-        .map(td => td.innerText.trim())
-      return { rank, pilot, score }
-    })
-  )
+    // You can close the new page, but be careful not to close the browser
+    await page.close();
 
-  console.log(rows)
-  await browser.close()
-})().catch(err => {
-  console.error('❌ Error during scraping:', err)
-  process.exit(1)
-})
+    // To prevent Puppeteer from closing the entire browser instance,
+    // do not call `browser.close()` at the end of your script.
+    // The connection will simply be disconnected.
+})();
